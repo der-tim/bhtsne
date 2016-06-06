@@ -1,4 +1,4 @@
-function mappedX = fast_tsne(X, no_dims, initial_dims, perplexity, theta, alg)
+function mappedX = fast_tsne(X, no_dims, initial_dims, perplexity, theta, alg, max_iter)
 %FAST_TSNE Runs the C++ implementation of Barnes-Hut t-SNE
 %
 %   mappedX = fast_tsne(X, no_dims, initial_dims, perplexity, theta, alg)
@@ -66,6 +66,9 @@ function mappedX = fast_tsne(X, no_dims, initial_dims, perplexity, theta, alg)
         alg = 'svd';
     end
     
+    if ~exist('max_iter', 'var') || isempty(max_iter)
+        max_iter = 1000;
+    end    
     % Perform the initial dimensionality reduction using PCA
     X = double(X);
     X = bsxfun(@minus, X, mean(X, 1));
@@ -75,8 +78,8 @@ function mappedX = fast_tsne(X, no_dims, initial_dims, perplexity, theta, alg)
     % Run the fast diffusion SNE implementation
     tsne_path = which('fast_tsne');
     tsne_path = fileparts(tsne_path);
-    write_data(X, no_dims, theta, perplexity);
-    tic, system(fullfile(tsne_path,'./bh_tsne')); toc
+    write_data(X, no_dims, theta, perplexity, max_iter);
+    tic, system(fullfile(tsne_path,'./windows/bh_tsne')); toc
     [mappedX, landmarks, costs] = read_data;   
     landmarks = landmarks + 1;              % correct for Matlab indexing
     delete('data.dat');
@@ -85,7 +88,7 @@ end
 
 
 % Writes the datafile for the fast t-SNE implementation
-function write_data(X, no_dims, theta, perplexity)
+function write_data(X, no_dims, theta, perplexity, max_iter)
     [n, d] = size(X);
     h = fopen('data.dat', 'wb');
 	fwrite(h, n, 'integer*4');
@@ -93,6 +96,7 @@ function write_data(X, no_dims, theta, perplexity)
     fwrite(h, theta, 'double');
     fwrite(h, perplexity, 'double');
 	fwrite(h, no_dims, 'integer*4');
+	fwrite(h, max_iter, 'integer*4');
     fwrite(h, X', 'double');
 	fclose(h);
 end
